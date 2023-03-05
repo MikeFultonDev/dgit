@@ -6,7 +6,7 @@
 Syntax()
 {
   echo "Syntax:
-  [<option>]* <verb> [<parameters>]*
+  dgit --git-dir <git-directory> --work-tree <work-tree> init
 Where:
   <options may be one of:>
   -h|--help: this help
@@ -14,16 +14,72 @@ Where:
   exit 4
 }
 
-if [ $# -eq 0 ]; then
+# read the options
+TEMP=`getopt -n dgit-init -o hg:w: --long help,git-dir:,work-tree: -- "$@"`
+eval set -- "$TEMP"
+
+gitdir=''
+worktree=''
+while true; do
+  case "$1" in
+    -g|--git-dir)
+      gitdir=$2
+      shift 2
+      ;;
+    -w|--work-tree)
+      worktree=$2
+      shift 2
+      ;;
+    -h|--help)
+      shift
+      ;;
+    --) 
+      shift
+      break
+      ;;
+    *) 
+      echo "Internal Error!"
+      exit 8
+      ;;
+  esac
+done
+
+if [ -z "${gitdir}" ] || [ -z "${worktree}" ]; then
   Syntax
 fi
 
-if [ "${1}x" = '-hx' ] || [ "${1}x" = '--helpx' ]; then
-  Syntax
-fi
-if [[ ${1:0:1} == "-" ]] ; then 
-  echo "Unknown option: $1" >&2
-  Syntax
+if ! git --git-dir "${gitdir}" --work-tree "${worktree}" "init" ;then
+  exit 8
 fi
 
-echo "git-init $@"
+gitexcl="${worktree}/GITEXCL"
+if ! [ -f "${gitexcl}" ]; then
+  if ! /bin/echo "# List of datasets to exclude (initially all except GITATTR and GITEXCL)
+*
+!GITATTR
+!GITEXCL
+" >"${gitexcl}" ; then
+    echo "Unable to create initial exclusion list in ${gitexcl}. Need write access" >&2
+    exit 4
+  fi
+fi
+
+gitattr="${worktree}/GITATTR"
+if ! [ -f "${gitattr}" ]; then
+  if ! /bin/echo "# Attributes to use for files (EBCDIC CCSID 1047 by default)
+text zos-working-tree-encoding=IBM-1047" >"${gitattr}" ; then
+    echo "Unable to create attributes file in ${gitattr}. Need write access" >&2
+    exit 4
+  fi
+fi
+
+rm -rf "${gitdir}/info/exclude" "${gitdir}/info/attributes"
+if ! ln -s "${gitexcl}" "${gitdir}/info/exclude" ; then
+  echo "Unable to create link to ${gitexcl} from ${gitdir}/info/exclude" >&2
+  exit 4
+fi
+if ! ln -s "${gitattr}" "${gitdir}/info/attributes" ; then
+  echo "Unable to create link to ${gitattr} from ${gitdir}/info/attributes" >&2
+  exit 4
+fi
+
