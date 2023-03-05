@@ -1,0 +1,53 @@
+#!/bin/env bash
+
+#
+# Simple 'wrapper' script around specific verbs like git does
+#
+Syntax()
+{
+  echo "Syntax:
+  [<option>]* <verb> [<parameters>]*
+Where:
+  <options may be one of:>
+  -h|--help: this help
+  " >&2
+  exit 4
+}
+
+if [ $# -eq 0 ]; then
+  Syntax
+fi
+
+if [ "${1}x" = '-hx' ] || [ "${1}x" = '--helpx' ]; then
+  Syntax
+fi
+if [[ ${1:0:1} == "-" ]] ; then 
+  echo "Unknown option: $1" >&2
+  Syntax
+fi
+
+verb="${1}"
+shift 1
+
+case $verb in
+init)
+  dgit-init $@
+  ;;
+clone)
+  dgit-clone $@
+  ;;
+push)
+  dgit-push $@
+  ;;
+add) 
+  dgit-add $@
+  ;;
+rm) 
+  dgit-rm $@
+  ;;
+*)
+  echo "Passthrough to git: ${@}"
+  git $@
+  ;;
+esac
+
