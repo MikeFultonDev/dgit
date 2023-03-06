@@ -6,24 +6,61 @@
 Syntax()
 {
   echo "Syntax:
-  [<option>]* <verb> [<parameters>]*
+  dgit-clone [<option>]* <url> <work-tree>
 Where:
-  <options may be one of:>
+  <option> may be one of:
   -h|--help: this help
+  -g|--separate-git-dir <directory> : git directory to clone into
   " >&2
   exit 4
 }
 
-if [ $# -eq 0 ]; then
+# read the options
+TEMP=`getopt -n dgit-init -o hg: --long help,separate-git-dir: -- "$@"`
+eval set -- "$TEMP"
+
+gitdir=''
+worktree=''
+while true; do
+  case "$1" in
+    -g|--separate-git-dir)
+      gitdir=$2
+      shift 2
+      ;;
+    -h|--help)
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Internal Error!"
+      exit 8
+      ;;
+  esac
+done
+
+set -x
+if [ $# -ne 3 ]; then
+  echo "URL and work-tree need to both be specified" >&2
   Syntax
 fi
 
-if [ "${1}x" = '-hx' ] || [ "${1}x" = '--helpx' ]; then
-  Syntax
+# git clone --separate-git-dir <git dir> <url> <work-tree>
+cloneurl="$2"
+worktree="$3"
+branch=$(git config --get init.defaultbranch)
+if [ -z "${branch}" ]; then
+  branch='main'
 fi
-if [[ ${1:0:1} == "-" ]] ; then 
-  echo "Unknown option: $1" >&2
-  Syntax
+if ! dgit-init --git-dir="${gitdir}" --work-tree="${worktree}" init ; then
+  echo "Unable to initialize git directory and work tree" >&2
+  exit 8
 fi
 
+if ! cd "${gitdir}" || ! git remote add "origin/${branch}" "${cloneurl}" ; then 
+  echo "Unable to establish remote to origin/${branch} ${cloneurl}" >&2
+  exit 8
+fi
 echo "git-clone $@"

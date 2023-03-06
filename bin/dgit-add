@@ -1,7 +1,9 @@
 #!/bin/env bash
 
 #
-# add dataset to git-managed list
+# add dataset to git-managed list. 
+# Add an explicit entry for the file to exclude if from the 'ignore' list
+# and then perform a standard 'git add'
 #
 Syntax()
 {
@@ -14,16 +16,48 @@ Where:
   exit 4
 }
 
-if [ $# -eq 0 ]; then
-  Syntax
+# read the options
+TEMP=`getopt -n dgit-add -o h --long help -- "$@"`
+eval set -- "$TEMP"
+
+gitdir=''
+worktree=''
+while true; do
+  case "$1" in
+    -h|--help)
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Internal Error!"
+      exit 8
+      ;;
+  esac
+done
+
+set -x
+if gitdir=$(git rev-parse --git-dir) ; then
+  exclude="${gitdir}/info/exclude"
+  if [ -f "${exclude}" ]; then 
+    echo "found exclude file"
+  else
+    echo "unable to find exclude file" >&2
+  fi
+else
+  echo "unable to find .git directory" >&2
 fi
 
-if [ "${1}x" = '-hx' ] || [ "${1}x" = '--helpx' ]; then
-  Syntax
+if worktree=$(git config --get core.worktree) ; then
+  if ! grep -e "^\!${2}\$" "${worktree}/GITEXCL" ; then
+    if ! echo "!${2}" >> "${worktree}/GITEXCL" ; then
+      echo "Unable to add !${2} to ${worktree}/GITEXCL" >&2
+      exit 8
+    fi
+  else
+    echo "File ${2} already in GITEXCL - GITEXCL not changed"
+  fi
 fi
-if [[ ${1:0:1} == "-" ]] ; then 
-  echo "Unknown option: $1" >&2
-  Syntax
-fi
-
-echo "git-add $@"
+git "$@"
