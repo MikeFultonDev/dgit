@@ -39,12 +39,6 @@ clone)
 push)
   dgit-push $@
   ;;
-add) 
-  dgit-add $@
-  ;;
-rm) 
-  dgit-rm $@
-  ;;
 *)
   echo "Passthrough to git: ${@}"
   git "$@"

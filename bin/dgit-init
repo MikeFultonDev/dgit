@@ -52,39 +52,25 @@ if ! git --git-dir "${gitdir}" --work-tree "${worktree}" "init" ;then
   exit 8
 fi
 
-dataset=false
-if [ "${worktree}##/dsfs/" != "${worktree}" ]; then
+dataset=''
+if [ "${worktree##/dsfs/}" != "${worktree}" ]; then
   # We are dealing with a dataset-mapped directory
-  if [ "${worktree}##/dsfs/txt" = "${worktree}" ]; then
+  if [ "${worktree##/dsfs/txt/}" = "${worktree}" ]; then
     # Only support for 'txt' so fail
     echo "dgit only supports a work-tree under /dsfs/txt" >&2
     exit 8
   else
-    dataset=true
-  fi
-fi
-
-gitexcl="${worktree}/gitexcl"
-if ! [ -f "${gitexcl}" ]; then
-  if ${dataset}; then
-    echo "Need to pre-allocate dataset for gitexcl (temporary)" >&2
-    exit 4
-  fi
-  if ! /bin/echo "# List of datasets to exclude (initially all except gitattr and gitexcl)
-*
-!gitattr
-!gitexcl
-" >"${gitexcl}" ; then
-    echo "Unable to create initial exclusion list in ${gitexcl}. Need write access" >&2
-    exit 4
+    dataset=$(echo "${worktree##/dsfs/txt/}" | tr '/' '.')
   fi
 fi
 
 gitattr="${worktree}/gitattr"
 if ! [ -f "${gitattr}" ]; then
-  if ${dataset}; then
-    echo "Need to pre-allocate dataset for gitexcl (temporary)" >&2
-    exit 4
+  if [ "${dataset}x" != "x" ] ; then
+    if ! dtouch -tseq "${dataset}.gitattr" ; then
+      echo "Unable to allocate ${dataset} for dgit initialization" >&2
+      exit 8
+    fi
   fi
   if ! /bin/echo "# Attributes to use for files (EBCDIC CCSID 1047 by default)
 text zos-working-tree-encoding=IBM-1047" >"${gitattr}" ; then
@@ -93,11 +79,6 @@ text zos-working-tree-encoding=IBM-1047" >"${gitattr}" ; then
   fi
 fi
 
-rm -rf "${gitdir}/info/exclude" "${gitdir}/info/attributes"
-if ! ln -s "${gitexcl}" "${gitdir}/info/exclude" ; then
-  echo "Unable to create link to ${gitexcl} from ${gitdir}/info/exclude" >&2
-  exit 4
-fi
 if ! ln -s "${gitattr}" "${gitdir}/info/attributes" ; then
   echo "Unable to create link to ${gitattr} from ${gitdir}/info/attributes" >&2
   exit 4
