@@ -6,12 +6,17 @@
 #
 Syntax()
 {
-  echo "Syntax:
+  echo "\
+dgit-init: initialize a git repo with a corresponding separate working tree
+           to be pushed to an empty git repo on a remote server
+Syntax:
   dgit --git-dir <git-directory> --work-tree <work-tree> init
 Where:
   <options may be one of:>
-  -h|--help: this help
-  " >&2
+  -h|--help:      this help
+  -g|--git-dir:   git directory
+  -w|--work-tree: working tree directory
+" >&2
   exit 4
 }
 
@@ -68,7 +73,7 @@ if [ "${worktree##/dsfs/}" != "${worktree}" ]; then
   # We are dealing with a dataset-mapped directory
   if [ "${worktree##/dsfs/txt/}" = "${worktree}" ]; then
     # Only support for 'txt' so fail
-    echo "dgit only supports a work-tree under /dsfs/txt" >&2
+    echo "dgit only supports a work-tree under /dsfs/txt but not other /dsfs directories" >&2
     exit 8
   else
     dataset=$(echo "${worktree##/dsfs/txt/}" | tr '/' '.')
@@ -107,8 +112,14 @@ if ! git commit -m "create initial gitattr file" ; then
   echo "Unable to commit initial gitattr to repository" >&2
   exit 4
 fi
-if ! git branch -M main ; then
-  echo "Unable to create initial branch main"
+
+default=$(git config --get init.defaultbranch)
+if [ "${default}x" = "x" ]; then
+  default=main
+fi
+
+if ! git branch -M "${default}" ; then
+  echo "Unable to create initial branch ${default}"
   exit 4
 fi
 
@@ -119,14 +130,14 @@ echo "To commit your <files> to an empty repository <repo> on the remote server 
   git add <files>
   git commit -m \"<message>\"
   git remote add origin <server>:<repo>
-  git branch -M main
-  git push -u origin main
+  git branch -M ${default}
+  git push -u origin ${default}
 
 If you wanted to add your outstanding files with message 'base' to remote server git@github.com, repository Developer/${gitbase}.git, issue:
   cd ${gitdir}
   git add .
   git commit -m \"base\"
   git remote add origin git@github.com:Developer/${gitbase}.git
-  git branch -M main
-  git push -u origin main
+  git branch -M ${default}
+  git push -u origin ${default}
 "
