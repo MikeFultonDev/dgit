@@ -84,3 +84,19 @@ if ! ln -s "${gitattr}" "${gitdir}/info/attributes" ; then
   exit 4
 fi
 
+if ! cd "${gitdir}" ; then
+  echo "Unable to cd into ${gitdir}" >&2
+  exit 4
+fi
+if ! git add gitattr ; then
+  echo "Unable to add gitattr to repository" >&2
+  exit 4
+fi
+if ! git commit -m "create initial gitattr file" ; then
+  echo "Unable to commit initial gitattr to repository" >&2
+  exit 4
+fi
+if ! git branch -M main ; then
+  echo "Unable to create initial branch main"
+  exit 4
+fi

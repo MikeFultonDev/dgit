@@ -41,7 +41,6 @@ while true; do
   esac
 done
 
-set -x
 if [ $# -ne 3 ]; then
   echo "URL and work-tree need to both be specified" >&2
   Syntax
@@ -54,7 +53,16 @@ branch=$(git config --get init.defaultbranch)
 if [ -z "${branch}" ]; then
   branch='main'
 fi
-if ! dgit-init --git-dir="${gitdir}" --work-tree="${worktree}" init ; then
+if ! mkdir "${gitdir}" ; then
+  echo "Directory ${gitdir} already exists. Clone would overwrite - stopping." >&2
+  exit 8
+fi
+if ! [ -d "${worktree}" ]; then
+  echo "Work tree is expected to exist already. dgit-clone stopping." >&2
+  exit 8
+fi
+
+if ! dgit-init --git-dir="${gitdir}" --work-tree="${worktree}" ; then
   echo "Unable to initialize git directory and work tree" >&2
   exit 8
 fi
@@ -63,4 +71,10 @@ if ! cd "${gitdir}" || ! git remote add "origin/${branch}" "${cloneurl}" ; then
   echo "Unable to establish remote to origin/${branch} ${cloneurl}" >&2
   exit 8
 fi
-echo "git-clone $@"
+echo "Attempt to merge clone and local tree"
+if ! git push -u origin "${branch}" ; then
+  echo "Unable to push changes to ${cloneurl}" >&2
+  exit 4
+fi
+
+git pull origin "${branch}"
