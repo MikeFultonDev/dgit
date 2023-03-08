@@ -127,14 +127,20 @@ gitbase=$(basename "${gitdir}")
 
 echo "To commit your <files> to an empty repository <repo> on the remote server <server>, issue:
   cd ${gitdir}
+  edit info/exclude to specify which directories you do not want to manage with git
   git add <files>
   git commit -m \"<message>\"
   git remote add origin <server>:<repo>
   git branch -M ${default}
   git push -u origin ${default}
 
-If you wanted to add your outstanding files with message 'base' to remote server git@github.com, repository Developer/${gitbase}.git, issue:
+If you wanted to add your outstanding files with message 'base' to remote server git@github.com, repository Developer/${gitbase}.git, 
+and you wanted to exclude proj23.lst and proj23.obj from git management, issue:
   cd ${gitdir}
+  edit info/exclude and add:           
+proj23.lst/
+proj23.obj/
+
   git add .
   git commit -m \"base\"
   git remote add origin git@github.com:Developer/${gitbase}.git
