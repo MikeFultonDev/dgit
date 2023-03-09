@@ -79,15 +79,39 @@ if [ "${worktree##/dsfs/}" != "${worktree}" ]; then
     dataset=$(echo "${worktree##/dsfs/txt/}" | tr '/' '.')
   fi
 fi
+dgitcfg="${worktree}/dgitcfg"
 
-gitattr="${worktree}/gitattr"
-if ! [ -f "${gitattr}" ]; then
-  if [ "${dataset}x" != "x" ] ; then
-    if ! dtouch -tseq "${dataset}.gitattr" ; then
-      echo "Unable to allocate ${dataset} for dgit initialization" >&2
+if [ "${dataset}x" != "x" ] ; then
+  if ! [ -d "${dgitcfg}" ] ; then
+    if ! dtouch "${dataset}.dgitcfg" ; then
+      echo "Unable to allocate ${dataset}.dgitcfg for dgit initialization" >&2
       exit 8
     fi
   fi
+else
+  if ! [ -d "${dgitcfg}" ] ; then
+    if ! mkdir "${dgitcfg}" ; then
+      echo "Unable to create ${dgitcfg} directory for dgit initialization" >&2
+      exit 8
+    fi
+  fi
+fi
+gitexcl="${dgitcfg}/exclude"
+if ! [ -f "${gitexcl}" ]; then
+  if ! /bin/echo "# Files to exclude 
+" >"${gitexcl}" ; then
+    echo "Unable to create attributes file in ${gitexcl}. Need write access" >&2
+    exit 4
+  fi
+fi
+rm -rf "${gitdir}/info/exclude"
+if ! ln -s "${gitexcl}" "${gitdir}/info/exclude" ; then
+  echo "Unable to create link to ${gitexcl} from ${gitdir}/info/exclude" >&2
+  exit 4
+fi
+
+gitattr="${gitdir}/info/attributes"
+if ! [ -f "${gitattr}" ]; then
   if ! /bin/echo "# Attributes to use for files (EBCDIC CCSID 1047 by default)
 text zos-working-tree-encoding=IBM-1047" >"${gitattr}" ; then
     echo "Unable to create attributes file in ${gitattr}. Need write access" >&2
@@ -95,21 +119,16 @@ text zos-working-tree-encoding=IBM-1047" >"${gitattr}" ; then
   fi
 fi
 
-if ! ln -s "${gitattr}" "${gitdir}/info/attributes" ; then
-  echo "Unable to create link to ${gitattr} from ${gitdir}/info/attributes" >&2
-  exit 4
-fi
-
 if ! cd "${gitdir}" ; then
   echo "Unable to cd into ${gitdir}" >&2
   exit 4
 fi
-if ! git add gitattr ; then
-  echo "Unable to add gitattr to repository" >&2
+if ! git add dgitcfg/* ; then
+  echo "Unable to add dgitcfg directory to repository" >&2
   exit 4
 fi
-if ! git commit -m "create initial gitattr file" ; then
-  echo "Unable to commit initial gitattr to repository" >&2
+if ! git commit -m "create initial attributes and exclude file" ; then
+  echo "Unable to commit initial files to repository" >&2
   exit 4
 fi
 
